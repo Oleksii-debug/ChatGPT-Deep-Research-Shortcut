@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Deep Research Shortcut",
-  "version": "0.1.0",
-  "description": "Keyboard-first, NVDA-friendly shortcut for activating ChatGPT Deep Research.",
+  "name": "ChatGPT Accessible Tool Picker",
+  "version": "0.2.0",
+  "description": "NVDA-friendly keyboard picker for ChatGPT image generation, web search and Deep Research.",
   "permissions": ["activeTab"],
   "background": {
     "service_worker": "src/background.js"
@@ -15,15 +15,15 @@
     }
   ],
   "commands": {
-    "activate-deep-research": {
+    "open-tool-picker": {
       "suggested_key": {
         "default": "Ctrl+Shift+U",
         "windows": "Ctrl+Shift+U"
       },
-      "description": "Activate ChatGPT Deep Research"
+      "description": "Open accessible ChatGPT tool picker"
     }
   },
   "action": {
-    "default_title": "Activate ChatGPT Deep Research"
+    "default_title": "Open ChatGPT tool picker"
   }
 }
