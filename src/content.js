@@ -23,7 +23,11 @@
     '[tabindex="0"]',
     '[data-testid*="research" i]',
     '[data-testid*="deep" i]',
-    '[aria-label*="research" i]'
+    '[aria-label*="research" i]',
+    '[data-app-id*="deep_research" i]',
+    '[data-connector-id*="deep_research" i]',
+    '[data-tool*="deep-research" i]',
+    '[data-value*="deep-research" i]'
   ].join(',');
 
   let activationInProgress = false;
