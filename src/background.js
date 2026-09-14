@@ -1,23 +1,21 @@
-const COMMAND = "activate-deep-research";
+const COMMAND = 'open-tool-picker';
+const MESSAGE = { type: 'OPEN_TOOL_PICKER' };
+
+async function openPicker(tabId) {
+  if (!tabId) return;
+  try {
+    await chrome.tabs.sendMessage(tabId, MESSAGE);
+  } catch (error) {
+    console.warn('[ChatGPT Tool Picker] Content script unavailable on this tab.', error);
+  }
+}
 
 chrome.commands.onCommand.addListener(async (command) => {
   if (command !== COMMAND) return;
-
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "ACTIVATE_DEEP_RESEARCH" });
-  } catch (error) {
-    console.warn("[ChatGPT Deep Research Shortcut] Content script unavailable on this tab.", error);
-  }
+  await openPicker(tab?.id);
 });
 
 chrome.action.onClicked.addListener(async (tab) => {
-  if (!tab?.id) return;
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: "ACTIVATE_DEEP_RESEARCH" });
-  } catch (error) {
-    console.warn("[ChatGPT Deep Research Shortcut] Content script unavailable on this tab.", error);
-  }
+  await openPicker(tab?.id);
 });
