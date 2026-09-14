@@ -1,90 +1,100 @@
-# ChatGPT Deep Research Shortcut
+# ChatGPT Accessible Tool Picker
 
-Accessible Chrome extension that activates ChatGPT Deep Research from a keyboard shortcut and provides NVDA-friendly status feedback.
+Доступне Chrome-розширення для NVDA, яке відкриває власне клавіатурне вікно вибору інструмента ChatGPT через **Ctrl+Shift+U**.
 
-## Why this exists
+## Поточні інструменти
 
-On some current ChatGPT web builds, the composer `+` / “Add files and more” menu can be difficult or impossible to use reliably with NVDA. This extension provides a keyboard-first path that does not depend on visual coordinates.
+У версії 0.2.0 доступні саме три функції, підтверджені у живому меню ChatGPT:
 
-The extension targets semantic UI information first:
+1. **Створити зображення** — «Візуалізуйте все».
+2. **Пошук в Інтернеті** — «Знаходьте актуальні новини й інформацію».
+3. **Глибоке дослідження** — «Отримати докладний звіт».
 
-- `data-testid="composer-plus-btn"`
-- `id="composer-plus-btn"`
-- `aria-haspopup="menu"`
-- accessible Deep Research labels and ARIA/menu roles
+## Як працює Ctrl+Shift+U
 
-It intentionally avoids depending on ChatGPT's generated CSS class names.
+1. На вкладці `https://chatgpt.com` натисніть **Ctrl+Shift+U**.
+2. Розширення відкриє власний доступний `role="dialog"`.
+3. Фокус автоматично переходить на перший пункт.
+4. **Стрілка вниз / вгору** або **Tab / Shift+Tab** переміщують вибір.
+5. **Home / End** переходять на перший / останній пункт.
+6. **Enter** запускає вибраний інструмент.
+7. **Escape** закриває вікно й повертає фокус назад.
+8. Після вибору розширення саме відкриває штатне меню ChatGPT `+`, знаходить відповідний пункт за доступною назвою/семантичними ознаками, натискає його та повертає фокус у поле запиту.
 
-## Keyboard shortcut
+Розширення **не надсилає ваш запит автоматично**. Після активації інструмента ви вводите текст і натискаєте Enter самі.
 
-Press **Ctrl+Shift+U** on a ChatGPT tab.
+## NVDA
 
-Expected sequence:
+Діалог використовує:
 
-1. Find the ChatGPT composer `+` button.
-2. Open the tools menu if it is closed.
-3. Wait for the live popup to be mounted in the DOM.
-4. Find the Deep Research entry by accessible text, role, or semantic test identifiers.
-5. Activate it.
-6. Return focus to the message composer.
-7. Announce the result through an ARIA live region so NVDA can report it.
+- `role="dialog"`;
+- `aria-modal="true"`;
+- `aria-labelledby`;
+- `aria-describedby`;
+- звичайні HTML-кнопки для кожного інструмента;
+- `role="status"` / `aria-live` для повідомлень про успіх або помилку.
 
-If Chrome has assigned the shortcut to another extension, open `chrome://extensions/shortcuts` and assign **Ctrl+Shift+U** to “Activate ChatGPT Deep Research”.
+Тому NVDA має оголосити назву діалогу, інструкцію та кожен пункт разом з описом.
 
-## Install from source in Chrome
+## Чому це потрібно
 
-1. Download or clone this repository.
-2. Open `chrome://extensions`.
-3. Turn on **Developer mode**.
-4. Choose **Load unpacked**.
-5. Select the repository folder containing `manifest.json`.
-6. Open `https://chatgpt.com`.
-7. Press **Ctrl+Shift+U**.
+У деяких поточних збірках ChatGPT меню `+` / «Додати файли та інше» існує в DOM і візуально відкривається, але його пункти можуть бути ненадійно доступні через NVDA. Розширення створює незалежний клавіатурний шар вибору, а потім виконує потрібну штатну дію без координат миші.
 
-For an NVDA-only workflow, use Chrome's normal keyboard navigation on the Extensions page; after installation you should not need to navigate the inaccessible ChatGPT tools menu manually.
+Воно орієнтується насамперед на семантичні ознаки:
 
-## Current target
+- `data-testid="composer-plus-btn"`;
+- `id="composer-plus-btn"`;
+- `aria-haspopup="menu"`;
+- доступні назви пунктів;
+- `role="menuitem"` / суміжні ARIA-ролі;
+- стабільні семантичні `data-*` ідентифікатори, якщо вони є.
 
-The first version targets `https://chatgpt.com/*` and uses Manifest V3.
+Згенеровані CSS-класи ChatGPT не використовуються як основний механізм.
 
-Observed ChatGPT trigger in the supplied September 2026 HTML snapshot:
+## Встановлення в Chrome
 
-```html
-<button
-  data-testid="composer-plus-btn"
-  id="composer-plus-btn"
-  aria-label="Додати файли та інше"
-  aria-haspopup="menu"
-  aria-expanded="false">
-</button>
-```
+1. Завантажте ZIP з успішного GitHub Actions artifact або клон репозиторію.
+2. Якщо це ZIP — розпакуйте його.
+3. Відкрийте `chrome://extensions`.
+4. Увімкніть **Режим розробника / Developer mode**.
+5. Виберіть **Завантажити розпаковане / Load unpacked**.
+6. Виберіть папку, де лежить `manifest.json`.
+7. Відкрийте або перезавантажте `https://chatgpt.com`.
+8. Натисніть **Ctrl+Shift+U**.
 
-The saved HTML did not preserve the transient popup menu itself, so the extension waits for the **live** popup after clicking the trigger instead of relying on a serialized menu snapshot.
+Якщо Chrome призначив цю комбінацію іншому розширенню, відкрийте `chrome://extensions/shortcuts` і призначте **Ctrl+Shift+U** команді цього розширення.
 
-## Safety and privacy
+## Конфіденційність
 
-- No network requests are made by the extension.
-- No prompts, chats, cookies, tokens, or account data are collected.
-- It only runs on `chatgpt.com`.
-- It performs the same front-end interaction a user would perform manually: open the tools menu and activate Deep Research.
+- Розширення не робить власних мережевих запитів.
+- Не збирає тексти чатів, prompts, cookies, токени або облікові дані.
+- Працює лише на `https://chatgpt.com/*`.
+- Дозвіл runtime мінімальний: `activeTab`.
 
-## Development
+## Розробка та перевірка
 
-Requires Node.js 20+ only for tests. The extension itself has no npm runtime dependencies.
+Node.js 20+ потрібен лише для тестів. Runtime-залежностей npm немає.
 
 ```bash
 npm test
 ```
 
-GitHub Actions also validates the semantic matcher and Manifest V3 configuration on pull requests.
+CI перевіряє:
 
-## Accessibility behavior
+- синтаксис JavaScript;
+- семантичний matcher для всіх трьох інструментів;
+- українські назви й підписи з живого меню;
+- англійські fallback-назви;
+- ARIA-контракт власного діалогу;
+- клавіші Escape, стрілки, Home, End і Tab;
+- відсутність автоматичного submit запиту;
+- Manifest V3 і точну комбінацію `Ctrl+Shift+U`;
+- мінімальні permissions;
+- створення готового ZIP artifact.
 
-Status messages are exposed using an off-screen `role="status"` live region. Examples include:
+## Поточне обмеження
 
-- “Пункт Deep research вибрано. Введіть запит і натисніть Enter.”
-- “Deep research уже ввімкнено.”
-- A clear failure message if the ChatGPT UI changes and the target can no longer be found.
+Автоматичні тести можуть перевірити код, manifest та семантичний matcher, але вони не можуть замінити один реальний acceptance-test у вашій авторизованій сесії ChatGPT + NVDA, тому що меню ChatGPT формується динамічно на стороні вебклієнта.
 
 ## License
 
