@@ -92,6 +92,20 @@
     return !!tool && textMatchesAny(value, tool.descriptions);
   }
 
+  function isPickerShortcutEvent(event) {
+    if (!event) return false;
+    const physicalU = event.code === 'KeyU';
+    const textualU = String(event.key || '').toLowerCase() === 'u';
+    return Boolean(
+      event.ctrlKey &&
+      event.shiftKey &&
+      !event.altKey &&
+      !event.metaKey &&
+      !event.repeat &&
+      (physicalU || textualU)
+    );
+  }
+
   function attributeSignature(element) {
     if (!element?.getAttribute) return '';
     return [
@@ -171,6 +185,7 @@
     getTool,
     isToolLabel,
     isToolDescription,
+    isPickerShortcutEvent,
     accessibleText,
     scoreToolCandidate,
     isSelected
