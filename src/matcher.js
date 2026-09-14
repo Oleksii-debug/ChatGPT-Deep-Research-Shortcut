@@ -1,17 +1,17 @@
 (() => {
   const LABEL_PATTERNS = [
-    /\bdeep\s*research\b/i,
-    /\bпоглиблене\s+дослідження\b/i,
-    /\bглибоке\s+дослідження\b/i,
-    /\bглубокое\s+исследование\b/i,
-    /\bhlbkovy\s+vyskum\b/i,
-    /\bhloubkovy\s+vyzkum\b/i,
-    /\brecherche\s+approfondie\b/i,
-    /\binvestigacion\s+profunda\b/i,
-    /\bpesquisa\s+aprofundada\b/i,
-    /\bpesquisa\s+profunda\b/i,
-    /\bgrundliche\s+recherche\b/i,
-    /\bdog[lł]ebne\s+badanie\b/i
+    /deep\s*research/i,
+    /поглиблене\s+дослідження/i,
+    /глибоке\s+дослідження/i,
+    /глубокое\s+исследование/i,
+    /hlbkovy\s+vyskum/i,
+    /hloubkovy\s+vyzkum/i,
+    /recherche\s+approfondie/i,
+    /investigacion\s+profunda/i,
+    /pesquisa\s+aprofundada/i,
+    /pesquisa\s+profunda/i,
+    /grundliche\s+recherche/i,
+    /dog[lł]ebne\s+badanie/i
   ];
 
   function normalizeText(value) {
