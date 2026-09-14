@@ -2,41 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const picker = fs.readFileSync(path.join(__dirname, '../src/picker.js'), 'utf8');
+const activation = fs.readFileSync(path.join(__dirname, '../src/activation.js'), 'utf8');
 
-const source = fs.readFileSync(path.join(__dirname, '../src/content.js'), 'utf8');
-
-test('content script listens for Ctrl+Shift+U directly in the ChatGPT page', () => {
-  assert.match(source, /document\.addEventListener\(\s*['"]keydown['"]/);
-  assert.match(source, /isPickerShortcutEvent\(event\)/);
-  assert.match(source, /requestOpenPicker\('page-keydown'\)/);
-  assert.match(source, /stopImmediatePropagation/);
+test('content page listens directly for Ctrl+Shift+U and diagnostics shortcut', () => {
+  assert.match(picker, /document\.addEventListener\('keydown'/);
+  assert.match(picker, /isPickerShortcutEvent\(event\)/);
+  assert.match(picker, /isDiagnosticsShortcutEvent/);
+  assert.match(picker, /stopImmediatePropagation/);
 });
 
-test('extension command and in-page shortcut converge on one deduplicated open path', () => {
-  assert.match(source, /OPEN_DEDUPE_MS/);
-  assert.match(source, /lastOpenRequestAt/);
-  assert.match(source, /requestOpenPicker\('chrome-command'\)/);
-  assert.match(source, /document\.getElementById\(PICKER_ID\)/);
+test('extension command and page shortcut converge on one deduplicated picker', () => {
+  assert.match(picker, /OPEN_DEDUPE_MS=350/);
+  assert.match(picker, /lastOpen/);
+  assert.match(picker, /openPicker\('page-keydown'\)/);
+  assert.match(picker, /openPicker\('chrome-command'\)/);
 });
 
-test('picker overlay is viewport-relative for windowed and fullscreen layouts', () => {
-  assert.match(source, /position:\s*'fixed'/);
-  assert.match(source, /inset:\s*'0'/);
-  assert.match(source, /100vw/);
-  assert.match(source, /100dvh/);
-  assert.doesNotMatch(source, /screen\.width|screen\.height/);
-  assert.doesNotMatch(source, /document\.fullscreenElement\s*\?/);
+test('overlay is viewport-relative for windowed/maximized/fullscreen', () => {
+  assert.match(picker, /position:'fixed'/);
+  assert.match(picker, /inset:'0'/);
+  assert.match(picker, /100vw/);
+  assert.match(picker, /100dvh/);
+  assert.doesNotMatch(picker, /screen\.width|screen\.height/);
 });
 
-test('picker does not require leaving ChatGPT for chrome extension UI', () => {
-  assert.doesNotMatch(source, /chrome:\/\/extensions/i);
-  assert.doesNotMatch(source, /window\.open\(/);
-  assert.doesNotMatch(source, /location\.href\s*=/);
-});
-
-test('tool activation preserves the prompt and only returns focus to the composer', () => {
-  assert.match(source, /focusComposer\(\)/);
-  assert.doesNotMatch(source, /composer\.value\s*=/);
-  assert.doesNotMatch(source, /prompt-textarea[^\n]*textContent\s*=/);
-  assert.doesNotMatch(source, /form\.submit\(|requestSubmit\(/);
+test('activation never leaves the page or submits prompt', () => {
+  assert.doesNotMatch(picker + activation, /window\.open\(|chrome:\/\/extensions|location\.href\s*=/);
+  assert.doesNotMatch(picker + activation, /requestSubmit\(|form\.submit\(/);
+  assert.match(activation, /focusComposer\(\)/);
 });

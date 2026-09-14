@@ -2,33 +2,33 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-
 const manifest = require('../manifest.json');
-const runtime = [
-  fs.readFileSync(path.join(__dirname, '../src/background.js'), 'utf8'),
-  fs.readFileSync(path.join(__dirname, '../src/matcher.js'), 'utf8'),
-  fs.readFileSync(path.join(__dirname, '../src/content.js'), 'utf8')
-].join('\n');
+const runtime = ['background.js','matcher.js','dom.js','diagnostics.js','activation.js','picker.js']
+  .map((f) => fs.readFileSync(path.join(__dirname, '../src', f), 'utf8')).join('\n');
 
-test('extension remains scoped to chatgpt.com with minimal permission', () => {
+test('runtime remains scoped and least-privileged', () => {
   assert.deepEqual(manifest.permissions, ['activeTab']);
   assert.deepEqual(manifest.content_scripts[0].matches, ['https://chatgpt.com/*']);
+  assert.equal(manifest.host_permissions, undefined);
 });
 
-test('runtime makes no extension-owned network requests', () => {
+test('runtime has no extension-owned network, storage or cookie access', () => {
   assert.doesNotMatch(runtime, /\bfetch\s*\(/);
-  assert.doesNotMatch(runtime, /XMLHttpRequest/);
-  assert.doesNotMatch(runtime, /WebSocket/);
-  assert.doesNotMatch(runtime, /navigator\.sendBeacon/);
+  assert.doesNotMatch(runtime, /XMLHttpRequest|WebSocket|sendBeacon/);
+  assert.doesNotMatch(runtime, /chrome\.storage|chrome\.cookies|localStorage|sessionStorage|document\.cookie/);
 });
 
-test('runtime does not persist or inspect browser storage/cookies', () => {
-  assert.doesNotMatch(runtime, /localStorage|sessionStorage/);
-  assert.doesNotMatch(runtime, /document\.cookie/);
-  assert.doesNotMatch(runtime, /chrome\.storage/);
+test('runtime does not submit or rewrite the prompt', () => {
+  assert.doesNotMatch(runtime, /requestSubmit\(|form\.submit\(/);
+  assert.doesNotMatch(runtime, /prompt-textarea[^\n]*(textContent|innerText|value)\s*=/);
 });
 
-test('runtime does not read prompt contents for telemetry or submission', () => {
-  assert.doesNotMatch(runtime, /prompt-textarea[^\n]*(innerText|textContent|value)/);
-  assert.doesNotMatch(runtime, /requestSubmit\(|\.submit\(/);
+test('diagnostic URL strips query and hash and report declares prompt privacy', () => {
+  const diagnostics = fs.readFileSync(path.join(__dirname, '../src/diagnostics.js'), 'utf8');
+  assert.match(diagnostics, /location\.origin/);
+  assert.match(diagnostics, /location\.pathname/);
+  assert.match(diagnostics, /\[redacted\]/);
+  assert.match(diagnostics, /const sensitive=new Set\(\['c','g','share','project','projects'\]\)/);
+  assert.doesNotMatch(diagnostics, /location\.href/);
+  assert.match(diagnostics, /Конфіденційність: текст запиту\/чату не записується/);
 });

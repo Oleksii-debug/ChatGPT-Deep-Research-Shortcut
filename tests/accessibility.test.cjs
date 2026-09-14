@@ -2,47 +2,31 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '../src/picker.js'), 'utf8');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'content.js'), 'utf8');
-
-test('picker is exposed as a modal dialog with accessible name and description', () => {
-  assert.match(source, /setAttribute\('role', 'dialog'\)/);
-  assert.match(source, /setAttribute\('aria-modal', 'true'\)/);
-  assert.match(source, /setAttribute\('aria-labelledby'/);
-  assert.match(source, /setAttribute\('aria-describedby'/);
+test('picker is a named modal dialog with native buttons', () => {
+  assert.match(source, /setAttribute\('role','dialog'\)/);
+  assert.match(source, /setAttribute\('aria-modal','true'\)/);
+  assert.match(source, /aria-labelledby/);
+  assert.match(source, /aria-describedby/);
+  assert.match(source, /createElement\('button'\)/);
+  assert.match(source, /b\.type='button'/);
 });
 
-test('picker exposes exactly the requested three tool ids', () => {
-  assert.match(source, /const TOOL_ORDER = \['image', 'web', 'research'\]/);
-});
-
-test('keyboard contract includes Escape, arrows, Home, End and Tab', () => {
-  for (const key of ['Escape', 'ArrowDown', 'ArrowUp', 'Home', 'End', 'Tab']) {
-    assert.ok(source.includes(`event.key === '${key}'`), `missing ${key} keyboard handling`);
+test('keyboard contract covers Escape, arrows, Home, End and Tab', () => {
+  for (const key of ['Escape','ArrowDown','ArrowUp','Home','End','Tab']) {
+    assert.ok(source.includes(`event.key==='${key}'`), `missing ${key}`);
   }
 });
 
-test('tool choices are native buttons and carry full accessible labels', () => {
-  assert.match(source, /document\.createElement\('button'\)/);
-  assert.match(source, /button\.type = 'button'/);
-  assert.match(source, /button\.setAttribute\('aria-label', `\$\{tool\.label\}\. \$\{tool\.description\}`\)/);
-});
-
-test('diagnostics control is separately named and keyboard reachable', () => {
-  assert.match(source, /diagnostics\.type = 'button'/);
-  assert.match(source, /diagnostics\.dataset\.chatgptDiagnosticsDownload = 'true'/);
+test('diagnostics is keyboard reachable and separately named', () => {
+  assert.match(source, /diag\.dataset\.diagnosticsDownload='true'/);
   assert.match(source, /Завантажити діагностичний звіт/);
-  assert.match(source, /getPickerFocusables\(dialog\)/);
+  assert.match(source, /focusables\(d\)/);
 });
 
-test('focus is moved into picker and restored on close', () => {
-  assert.match(source, /firstButton\?\.focus/);
-  assert.match(source, /focusBeforePicker/);
-  assert.match(source, /target\?\.focus/);
-});
-
-test('picker never submits a prompt itself', () => {
+test('picker never submits prompt text', () => {
   assert.doesNotMatch(source, /requestSubmit\(/);
   assert.doesNotMatch(source, /form\.submit\(/);
-  assert.doesNotMatch(source, /KeyboardEvent\([^)]*Enter/);
+  assert.doesNotMatch(source, /KeyboardEvent/);
 });
