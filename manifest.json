@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "ChatGPT Deep Research Shortcut",
+  "version": "0.1.0",
+  "description": "Keyboard-first, NVDA-friendly shortcut for activating ChatGPT Deep Research.",
+  "permissions": ["activeTab"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": ["src/matcher.js", "src/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "activate-deep-research": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "windows": "Ctrl+Shift+U"
+      },
+      "description": "Activate ChatGPT Deep Research"
+    }
+  },
+  "action": {
+    "default_title": "Activate ChatGPT Deep Research"
+  }
+}
