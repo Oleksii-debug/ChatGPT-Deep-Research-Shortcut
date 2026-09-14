@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "ChatGPT Accessible Tool Picker",
-  "version": "0.4.0",
-  "description": "NVDA-friendly verified picker for ChatGPT image generation, web search and Deep Research with downloadable diagnostics.",
+  "name": "Доступні інструменти",
+  "version": "0.5.0",
+  "description": "Доступне з NVDA меню інструментів із перевіркою реального вибраного режиму та локальною діагностикою.",
   "permissions": ["activeTab"],
   "background": {
     "service_worker": "src/background.js"
@@ -10,7 +10,13 @@
   "content_scripts": [
     {
       "matches": ["https://chatgpt.com/*"],
-      "js": ["src/matcher.js", "src/content.js"],
+      "js": [
+        "src/matcher.js",
+        "src/dom.js",
+        "src/diagnostics.js",
+        "src/activation.js",
+        "src/picker.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -20,10 +26,10 @@
         "default": "Ctrl+Shift+U",
         "windows": "Ctrl+Shift+U"
       },
-      "description": "Open accessible ChatGPT tool picker"
+      "description": "Відкрити доступне меню інструментів"
     }
   },
   "action": {
-    "default_title": "Open ChatGPT tool picker"
+    "default_title": "Доступні інструменти"
   }
 }

@@ -16,6 +16,10 @@
         /create[-_\s]*image/i,
         /generate[-_\s]*image/i,
         /image[-_\s]*generation/i
+      ],
+      selectionPatterns: [
+        /^image_gen$/i,
+        /image[-_\s]*gen(?:eration)?/i
       ]
     }),
     web: Object.freeze({
@@ -34,6 +38,10 @@
       ],
       signaturePatterns: [
         /search[-_\s]*(the[-_\s]*)?web/i,
+        /web[-_\s]*search/i
+      ],
+      selectionPatterns: [
+        /^search$/i,
         /web[-_\s]*search/i
       ]
     }),
@@ -55,6 +63,12 @@
       descriptions: ['Отримати докладний звіт', 'Get a detailed report'],
       signaturePatterns: [
         /connector[_-]openai[_-]deep[_-]research/i,
+        /deep[-_\s]*research/i
+      ],
+      selectionPatterns: [
+        /^(?:plugin:)?connector_openai_deep_research$/i,
+        /^connector:connector_openai_deep_research$/i,
+        /connector[_:-]openai[_-]deep[_-]research/i,
         /deep[-_\s]*research/i
       ]
     })
@@ -186,6 +200,47 @@
     return score;
   }
 
+
+  function selectionMetadataValues(element) {
+    if (!element?.getAttribute) return [];
+    return [
+      element.getAttribute('data-id'),
+      element.getAttribute('data-system-hint-type'),
+      element.getAttribute('data-keyword'),
+      element.getAttribute('data-symbol'),
+      element.getAttribute('data-tool'),
+      element.getAttribute('data-value'),
+      element.getAttribute('aria-label'),
+      element.getAttribute('title')
+    ].filter(Boolean);
+  }
+
+  function hasInlineSelectionIdentity(element) {
+    if (!element?.getAttribute) return false;
+    return (
+      element.hasAttribute?.('data-inline-selection-pill') ||
+      normalizeText(element.getAttribute('data-symbol')) === 'ecosystemmention'
+    );
+  }
+
+  function matchesToolSelectionIdentity(toolId, element) {
+    const tool = getTool(toolId);
+    if (!tool || !element?.getAttribute) return false;
+
+    const values = selectionMetadataValues(element);
+    const text = accessibleText(element);
+    if (text) values.push(text);
+
+    return values.some((value) => {
+      if (isToolLabel(toolId, value) || isToolDescription(toolId, value)) return true;
+      return (tool.selectionPatterns || []).some((pattern) => pattern.test(String(value)));
+    });
+  }
+
+  function isToolSelectionPill(toolId, element) {
+    return hasInlineSelectionIdentity(element) && matchesToolSelectionIdentity(toolId, element);
+  }
+
   function isSelected(element) {
     if (!element?.getAttribute) return false;
     return (
@@ -205,6 +260,10 @@
     isDiagnosticsShortcutEvent,
     accessibleText,
     scoreToolCandidate,
+    selectionMetadataValues,
+    hasInlineSelectionIdentity,
+    matchesToolSelectionIdentity,
+    isToolSelectionPill,
     isSelected
   });
 })();

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const manifest = require('../manifest.json');
 
-test('uses Manifest V3 and the intended ChatGPT host', () => {
+test('Manifest V3 and the intended host stay exact', () => {
   assert.equal(manifest.manifest_version, 3);
   assert.deepEqual(manifest.content_scripts?.[0]?.matches, ['https://chatgpt.com/*']);
   assert.equal(manifest.content_scripts?.[0]?.run_at, 'document_idle');
@@ -15,11 +15,10 @@ test('Ctrl+Shift+U opens the tool picker command on Windows', () => {
   assert.equal(command.suggested_key?.default, 'Ctrl+Shift+U');
 });
 
-test('extension version is the verified activation and diagnostics release', () => {
-  assert.equal(manifest.version, '0.4.0');
-  assert.match(manifest.name, /Tool Picker/i);
-  assert.match(manifest.description, /verified/i);
-  assert.match(manifest.description, /diagnostics/i);
+test('v0.5.0 visible extension name is Ukrainian', () => {
+  assert.equal(manifest.version, '0.5.0');
+  assert.equal(manifest.name, 'Доступні інструменти');
+  assert.doesNotMatch(manifest.name, /chat\s*gpt/i);
 });
 
 test('runtime permissions stay minimal', () => {
@@ -29,6 +28,13 @@ test('runtime permissions stay minimal', () => {
   assert.equal(manifest.permissions.includes('storage'), false);
 });
 
-test('content script dependency order is deterministic', () => {
-  assert.deepEqual(manifest.content_scripts?.[0]?.js, ['src/matcher.js', 'src/content.js']);
+test('active runtime module order is deterministic', () => {
+  assert.deepEqual(manifest.content_scripts?.[0]?.js, [
+    'src/matcher.js',
+    'src/dom.js',
+    'src/diagnostics.js',
+    'src/activation.js',
+    'src/picker.js'
+  ]);
+  assert.equal(manifest.content_scripts[0].js.includes('src/content.js'), false);
 });

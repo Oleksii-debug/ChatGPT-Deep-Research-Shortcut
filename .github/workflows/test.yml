@@ -30,7 +30,7 @@ jobs:
           for file in src/*.js tests/*.cjs; do
             node --check "$file"
           done
-      - name: Run unit, runtime, verification, diagnostics and accessibility tests
+      - name: Run behavioral, runtime, accessibility, privacy and diagnostics tests
         run: npm test
 
   package:
@@ -54,29 +54,30 @@ jobs:
       - name: Package extension
         run: |
           set -e
+          rm -rf dist
           mkdir -p dist/package
           cp manifest.json LICENSE README.md dist/package/
-          cp -R src dist/package/src
+          mkdir -p dist/package/src
+          cp src/background.js src/matcher.js src/dom.js src/diagnostics.js src/activation.js src/picker.js dist/package/src/
           cd dist/package
-          zip -r ../chatgpt-accessible-tool-picker-v0.4.0.zip .
+          zip -r ../Доступні_інструменти_v0.5.0.zip .
           cd ..
-          sha256sum chatgpt-accessible-tool-picker-v0.4.0.zip > chatgpt-accessible-tool-picker-v0.4.0.sha256
+          sha256sum Доступні_інструменти_v0.5.0.zip > Доступні_інструменти_v0.5.0.sha256
       - name: Verify packaged runtime
         run: |
           set -e
-          unzip -t dist/chatgpt-accessible-tool-picker-v0.4.0.zip
+          unzip -t dist/Доступні_інструменти_v0.5.0.zip
           rm -rf dist/release-check
           mkdir -p dist/release-check
-          unzip -q dist/chatgpt-accessible-tool-picker-v0.4.0.zip -d dist/release-check
-          node --check dist/release-check/src/background.js
-          node --check dist/release-check/src/matcher.js
-          node --check dist/release-check/src/content.js
-          node -e "const m=require('./dist/release-check/manifest.json'); if(m.manifest_version!==3||m.version!=='0.4.0') process.exit(1);"
+          unzip -q dist/Доступні_інструменти_v0.5.0.zip -d dist/release-check
+          for file in dist/release-check/src/*.js; do node --check "$file"; done
+          node -e "const m=require('./dist/release-check/manifest.json'); const expected=['src/matcher.js','src/dom.js','src/diagnostics.js','src/activation.js','src/picker.js']; if(m.manifest_version!==3||m.version!=='0.5.0'||JSON.stringify(m.content_scripts[0].js)!==JSON.stringify(expected)||JSON.stringify(m.permissions)!==JSON.stringify(['activeTab'])) process.exit(1);"
+          test ! -e dist/release-check/src/content.js
       - name: Upload tested ZIP and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: chatgpt-accessible-tool-picker-v0.4.0
+          name: Доступні_інструменти_v0.5.0
           path: |
-            dist/chatgpt-accessible-tool-picker-v0.4.0.zip
-            dist/chatgpt-accessible-tool-picker-v0.4.0.sha256
+            dist/Доступні_інструменти_v0.5.0.zip
+            dist/Доступні_інструменти_v0.5.0.sha256
           if-no-files-found: error
