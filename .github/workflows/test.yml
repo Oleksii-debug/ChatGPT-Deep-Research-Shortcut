@@ -19,7 +19,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check src/background.js
+          node --check src/matcher.js
+          node --check src/content.js
+          node --check tests/matcher.test.cjs
       - name: Run unit tests
         run: npm test
       - name: Validate manifest JSON
-        run: node -e "const m=require('./manifest.json'); if(m.manifest_version!==3) process.exit(1); if(m.commands?.['activate-deep-research']?.suggested_key?.windows!=='Ctrl+Shift+U') process.exit(1);"
+        run: node -e "const m=require('./manifest.json'); if(m.manifest_version!==3) process.exit(1); if(m.commands?.['activate-deep-research']?.suggested_key?.windows!=='Ctrl+Shift+U') process.exit(1); if(!m.content_scripts?.[0]?.matches?.includes('https://chatgpt.com/*')) process.exit(1);"
