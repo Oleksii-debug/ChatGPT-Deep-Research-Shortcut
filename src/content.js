@@ -83,7 +83,15 @@
     return element.closest(INTERACTIVE_SELECTOR);
   }
 
-  function findDeepResearchCandidate() {
+  function isInOpenPopup(element) {
+    if (!(element instanceof Element)) return false;
+    const popup = element.closest('[role="menu"], [role="listbox"], [popover], [data-state="open"]');
+    if (!(popup instanceof Element)) return false;
+    if (popup.hidden || popup.getAttribute('aria-hidden') === 'true') return false;
+    return isVisible(popup);
+  }
+
+  function findDeepResearchCandidate(baseline = null) {
     const candidates = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
 
     // Some implementations put the visible label in a child span while the
@@ -98,13 +106,14 @@
 
     return [...candidates]
       .filter(isVisible)
+      .filter((element) => !baseline || !baseline.has(element) || isInOpenPopup(element))
       .map((element) => ({ element, score: api.scoreDeepResearchCandidate(element) }))
       .filter(({ score }) => score >= 90)
       .sort((a, b) => b.score - a.score)[0]?.element || null;
   }
 
-  function waitForDeepResearchCandidate(timeoutMs = 4000) {
-    const immediate = findDeepResearchCandidate();
+  function waitForDeepResearchCandidate(baseline, timeoutMs = 4000) {
+    const immediate = findDeepResearchCandidate(baseline);
     if (immediate) return Promise.resolve(immediate);
 
     return new Promise((resolve) => {
@@ -119,7 +128,7 @@
       };
 
       const check = () => {
-        const candidate = findDeepResearchCandidate();
+        const candidate = findDeepResearchCandidate(baseline);
         if (candidate) finish(candidate);
       };
 
@@ -177,14 +186,16 @@
         return;
       }
 
-      if (plusButton.getAttribute('aria-expanded') !== 'true') {
+      const baseline = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
+      const wasOpen = plusButton.getAttribute('aria-expanded') === 'true';
+      if (!wasOpen) {
         plusButton.click();
       }
 
-      const candidate = await waitForDeepResearchCandidate();
+      const candidate = await waitForDeepResearchCandidate(baseline);
       if (!candidate) {
         announce('Меню відкрито, але пункт «Поглиблене дослідження» не знайдено. Можливо, ChatGPT змінив інтерфейс або функція недоступна в цьому чаті.');
-        console.warn(`${LOG_PREFIX} Deep Research menu item not found.`);
+        console.warn(`${LOG_PREFIX} Deep Research menu item not found in the opened popup.`);
         return;
       }
 
@@ -202,7 +213,7 @@
       await new Promise((resolve) => window.setTimeout(resolve, 180));
       focusComposer();
       announce(`Пункт ${label} вибрано. Введіть запит і натисніть Enter.`);
-      console.info(`${LOG_PREFIX} Activated candidate:`, label);
+      console.info(`${LOG_PREFIX} Activated candidate from tools popup:`, label);
     } catch (error) {
       console.error(`${LOG_PREFIX} Activation failed.`, error);
       announce('Не вдалося активувати поглиблене дослідження через помилку інтерфейсу ChatGPT.');
