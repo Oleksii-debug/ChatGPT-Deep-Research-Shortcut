@@ -35,7 +35,11 @@
       element.getAttribute("aria-label"),
       element.getAttribute("title"),
       element.getAttribute("name"),
-      element.getAttribute("data-state")
+      element.getAttribute("data-state"),
+      element.getAttribute("data-app-id"),
+      element.getAttribute("data-connector-id"),
+      element.getAttribute("data-tool"),
+      element.getAttribute("data-value")
     ]
       .filter(Boolean)
       .join(" ");
@@ -66,6 +70,7 @@
     let score = 0;
 
     if (isDeepResearchLabel(text)) score += 100;
+    if (/connector[_-]openai[_-]deep[_-]research/i.test(signature)) score += 120;
     if (/deep[-_\s]*research/i.test(signature)) score += 90;
     if (/research/i.test(signature) && /deep/i.test(signature)) score += 60;
 
