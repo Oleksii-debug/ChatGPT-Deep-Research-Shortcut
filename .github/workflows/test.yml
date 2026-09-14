@@ -1,0 +1,95 @@
+name: Test extension logic
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    name: Sequential Node 20/22/24 release gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Node 20 syntax and behavioral tests
+        run: |
+          set -e
+          for file in src/*.js tests/*.cjs; do node --check "$file"; done
+          npm test
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Node 22 syntax and behavioral tests
+        run: |
+          set -e
+          for file in src/*.js tests/*.cjs; do node --check "$file"; done
+          npm test
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Node 24 syntax and behavioral tests
+        run: |
+          set -e
+          for file in src/*.js tests/*.cjs; do node --check "$file"; done
+          npm test
+
+      - name: Restore Node 22 for independent release gate
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Re-run release gate
+        run: |
+          set -e
+          for file in src/*.js tests/*.cjs; do node --check "$file"; done
+          npm test
+
+      - name: Package extension
+        run: |
+          set -e
+          rm -rf dist
+          mkdir -p dist/package
+          cp manifest.json LICENSE README.md dist/package/
+          mkdir -p dist/package/src
+          cp src/background.js src/matcher.js src/dom.js src/diagnostics.js src/activation.js src/picker.js dist/package/src/
+          cd dist/package
+          zip -r ../Доступні_інструменти_v0.5.0.zip .
+          cd ..
+          sha256sum Доступні_інструменти_v0.5.0.zip > Доступні_інструменти_v0.5.0.sha256
+
+      - name: Verify packaged runtime
+        run: |
+          set -e
+          unzip -t dist/Доступні_інструменти_v0.5.0.zip
+          rm -rf dist/release-check
+          mkdir -p dist/release-check
+          unzip -q dist/Доступні_інструменти_v0.5.0.zip -d dist/release-check
+          for file in dist/release-check/src/*.js; do node --check "$file"; done
+          node -e "const m=require('./dist/release-check/manifest.json'); const expected=['src/matcher.js','src/dom.js','src/diagnostics.js','src/activation.js','src/picker.js']; if(m.manifest_version!==3||m.version!=='0.5.0'||m.name!=='Доступні інструменти'||JSON.stringify(m.content_scripts[0].js)!==JSON.stringify(expected)||JSON.stringify(m.permissions)!==JSON.stringify(['activeTab'])) process.exit(1);"
+          test ! -e dist/release-check/src/content.js
+
+      - name: Upload tested ZIP and checksum
+        uses: actions/upload-artifact@v4
+        with:
+          name: Доступні_інструменти_v0.5.0
+          path: |
+            dist/Доступні_інструменти_v0.5.0.zip
+            dist/Доступні_інструменти_v0.5.0.sha256
+          if-no-files-found: error

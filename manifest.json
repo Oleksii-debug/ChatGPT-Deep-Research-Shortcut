@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "Доступні інструменти",
+  "version": "0.5.0",
+  "description": "Доступне з NVDA меню інструментів із перевіркою реального вибраного режиму та локальною діагностикою.",
+  "permissions": ["activeTab"],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://chatgpt.com/*"],
+      "js": [
+        "src/matcher.js",
+        "src/dom.js",
+        "src/diagnostics.js",
+        "src/activation.js",
+        "src/picker.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "open-tool-picker": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "windows": "Ctrl+Shift+U"
+      },
+      "description": "Відкрити доступне меню інструментів"
+    }
+  },
+  "action": {
+    "default_title": "Доступні інструменти"
+  }
+}
