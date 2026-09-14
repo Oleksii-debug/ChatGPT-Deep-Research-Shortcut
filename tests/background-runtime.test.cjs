@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 
 const source = fs.readFileSync(path.join(__dirname, '../src/background.js'), 'utf8');
+const plain = value => JSON.parse(JSON.stringify(value));
 
 function createHarness() {
   let commandListener = null;
@@ -43,11 +44,11 @@ test('registered Chrome command opens picker in current active tab', async () =>
 
   await h.commandListener('open-tool-picker');
 
-  assert.deepEqual(h.calls[0], {
+  assert.deepEqual(plain(h.calls[0]), {
     type: 'query',
     query: { active: true, currentWindow: true }
   });
-  assert.deepEqual(h.calls[1], {
+  assert.deepEqual(plain(h.calls[1]), {
     type: 'message',
     tabId: 42,
     message: { type: 'OPEN_TOOL_PICKER' }
@@ -64,7 +65,7 @@ test('extension toolbar action uses the same picker message', async () => {
   const h = createHarness();
   assert.equal(typeof h.actionListener, 'function');
   await h.actionListener({ id: 7 });
-  assert.deepEqual(h.calls[0], {
+  assert.deepEqual(plain(h.calls[0]), {
     type: 'message',
     tabId: 7,
     message: { type: 'OPEN_TOOL_PICKER' }
