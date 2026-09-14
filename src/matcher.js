@@ -106,6 +106,20 @@
     );
   }
 
+  function isDiagnosticsShortcutEvent(event) {
+    if (!event) return false;
+    const physicalD = event.code === 'KeyD';
+    const textualD = String(event.key || '').toLowerCase() === 'd';
+    return Boolean(
+      event.ctrlKey &&
+      event.shiftKey &&
+      event.altKey &&
+      !event.metaKey &&
+      !event.repeat &&
+      (physicalD || textualD)
+    );
+  }
+
   function attributeSignature(element) {
     if (!element?.getAttribute) return '';
     return [
@@ -158,7 +172,9 @@
     if (tool.signaturePatterns.some((pattern) => pattern.test(signature))) score += 110;
 
     const normalizedText = normalizeText(text);
-    const combinedLabel = tool.labels.find((label) => normalizedText.includes(normalizeText(label)));
+    const combinedLabel = tool.labels.find((label) =>
+      normalizedText.includes(normalizeText(label))
+    );
     if (combinedLabel) score += 40;
 
     const role = element.getAttribute?.('role') || '';
@@ -186,6 +202,7 @@
     isToolLabel,
     isToolDescription,
     isPickerShortcutEvent,
+    isDiagnosticsShortcutEvent,
     accessibleText,
     scoreToolCandidate,
     isSelected
