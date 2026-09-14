@@ -9,6 +9,7 @@
   const PICKER_ID = 'chatgpt-tool-picker-dialog';
   const STATUS_ID = 'chatgpt-tool-picker-status';
   const TOOL_ORDER = ['image', 'web', 'research'];
+  const OPEN_DEDUPE_MS = 350;
 
   const PLUS_SELECTORS = [
     '[data-testid="composer-plus-btn"]',
@@ -30,6 +31,7 @@
 
   let activationInProgress = false;
   let focusBeforePicker = null;
+  let lastOpenRequestAt = 0;
 
   function announce(message, assertive = true) {
     let region = document.getElementById(STATUS_ID);
@@ -280,19 +282,21 @@
       alignItems: 'center',
       justifyContent: 'center',
       background: 'rgba(0, 0, 0, 0.55)',
-      padding: '24px'
+      padding: '16px',
+      boxSizing: 'border-box'
     });
 
     const panel = document.createElement('div');
     Object.assign(panel.style, {
-      width: 'min(560px, 100%)',
-      maxHeight: '90vh',
+      width: 'min(560px, calc(100vw - 32px))',
+      maxHeight: 'min(90vh, calc(100dvh - 32px))',
       overflow: 'auto',
       background: 'Canvas',
       color: 'CanvasText',
       border: '2px solid ButtonText',
       borderRadius: '12px',
       padding: '20px',
+      boxSizing: 'border-box',
       boxShadow: '0 12px 40px rgba(0,0,0,.35)'
     });
 
@@ -396,12 +400,36 @@
     announce('Оберіть інструмент ChatGPT: Створити зображення, Пошук в Інтернеті або Глибоке дослідження.', false);
   }
 
+  function requestOpenPicker(source = 'unknown') {
+    const existing = document.getElementById(PICKER_ID);
+    if (existing) {
+      const focusedButton = existing.querySelector('[data-chatgpt-tool-id]:focus');
+      const firstButton = getPickerButtons(existing)[0];
+      (focusedButton || firstButton)?.focus({ preventScroll: true });
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastOpenRequestAt < OPEN_DEDUPE_MS) return;
+    lastOpenRequestAt = now;
+    console.debug(`${LOG_PREFIX} Opening picker from ${source}.`);
+    openPicker();
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (!api.isPickerShortcutEvent(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
+    requestOpenPicker('page-keydown');
+  }, true);
+
   chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === 'OPEN_TOOL_PICKER') openPicker();
+    if (message?.type === 'OPEN_TOOL_PICKER') requestOpenPicker('extension-command');
   });
 
   globalThis.ChatGPTAccessibleToolPicker = Object.freeze({
-    openPicker,
+    openPicker: requestOpenPicker,
     closePicker,
     activateTool
   });
