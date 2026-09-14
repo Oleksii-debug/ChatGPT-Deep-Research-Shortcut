@@ -25,20 +25,20 @@ jobs:
           node --check src/matcher.js
           node --check src/content.js
           node --check tests/matcher.test.cjs
-      - name: Run unit tests
+          node --check tests/accessibility.test.cjs
+          node --check tests/manifest.test.cjs
+      - name: Run unit and contract tests
         run: npm test
-      - name: Validate manifest JSON
-        run: node -e "const m=require('./manifest.json'); if(m.manifest_version!==3) process.exit(1); if(m.commands?.['activate-deep-research']?.suggested_key?.windows!=='Ctrl+Shift+U') process.exit(1); if(!m.content_scripts?.[0]?.matches?.includes('https://chatgpt.com/*')) process.exit(1);"
       - name: Package extension
         run: |
           mkdir -p dist/package
           cp manifest.json LICENSE README.md dist/package/
           cp -R src dist/package/src
           cd dist/package
-          zip -r ../chatgpt-deep-research-shortcut-v0.1.0.zip .
+          zip -r ../chatgpt-accessible-tool-picker-v0.2.0.zip .
       - name: Upload tested ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: chatgpt-deep-research-shortcut-v0.1.0
-          path: dist/chatgpt-deep-research-shortcut-v0.1.0.zip
+          name: chatgpt-accessible-tool-picker-v0.2.0
+          path: dist/chatgpt-accessible-tool-picker-v0.2.0.zip
           if-no-files-found: error
