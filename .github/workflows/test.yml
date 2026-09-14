@@ -30,7 +30,7 @@ jobs:
           for file in src/*.js tests/*.cjs; do
             node --check "$file"
           done
-      - name: Run unit, runtime and accessibility contract tests
+      - name: Run unit, runtime, verification, diagnostics and accessibility tests
         run: npm test
 
   package:
@@ -58,14 +58,25 @@ jobs:
           cp manifest.json LICENSE README.md dist/package/
           cp -R src dist/package/src
           cd dist/package
-          zip -r ../chatgpt-accessible-tool-picker-v0.3.0.zip .
+          zip -r ../chatgpt-accessible-tool-picker-v0.4.0.zip .
           cd ..
-          sha256sum chatgpt-accessible-tool-picker-v0.3.0.zip > chatgpt-accessible-tool-picker-v0.3.0.sha256
+          sha256sum chatgpt-accessible-tool-picker-v0.4.0.zip > chatgpt-accessible-tool-picker-v0.4.0.sha256
+      - name: Verify packaged runtime
+        run: |
+          set -e
+          unzip -t dist/chatgpt-accessible-tool-picker-v0.4.0.zip
+          rm -rf dist/release-check
+          mkdir -p dist/release-check
+          unzip -q dist/chatgpt-accessible-tool-picker-v0.4.0.zip -d dist/release-check
+          node --check dist/release-check/src/background.js
+          node --check dist/release-check/src/matcher.js
+          node --check dist/release-check/src/content.js
+          node -e "const m=require('./dist/release-check/manifest.json'); if(m.manifest_version!==3||m.version!=='0.4.0') process.exit(1);"
       - name: Upload tested ZIP and checksum
         uses: actions/upload-artifact@v4
         with:
-          name: chatgpt-accessible-tool-picker-v0.3.0
+          name: chatgpt-accessible-tool-picker-v0.4.0
           path: |
-            dist/chatgpt-accessible-tool-picker-v0.3.0.zip
-            dist/chatgpt-accessible-tool-picker-v0.3.0.sha256
+            dist/chatgpt-accessible-tool-picker-v0.4.0.zip
+            dist/chatgpt-accessible-tool-picker-v0.4.0.sha256
           if-no-files-found: error
