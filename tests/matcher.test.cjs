@@ -2,13 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 require('../src/matcher.js');
-const api = globalThis.ChatGPTDR;
+const api = globalThis.ChatGPTToolPicker;
 
-function fakeElement({
-  text = '',
-  tagName = 'DIV',
-  attrs = {}
-} = {}) {
+function fakeElement({ text = '', tagName = 'DIV', attrs = {} } = {}) {
   return {
     tagName,
     innerText: text,
@@ -22,51 +18,76 @@ function fakeElement({
   };
 }
 
-test('recognizes current English and Ukrainian labels', () => {
-  assert.equal(api.isDeepResearchLabel('Deep research'), true);
-  assert.equal(api.isDeepResearchLabel('Поглиблене дослідження'), true);
-  assert.equal(api.isDeepResearchLabel('Глибоке дослідження'), true);
+test('exports exactly the three requested tools in canonical order data', () => {
+  assert.deepEqual(Object.keys(api.TOOL_DEFINITIONS), ['image', 'web', 'research']);
+  assert.equal(api.getTool('image').label, 'Створити зображення');
+  assert.equal(api.getTool('web').label, 'Пошук в Інтернеті');
+  assert.equal(api.getTool('research').label, 'Глибоке дослідження');
 });
 
-test('recognizes normalized localized labels', () => {
-  assert.equal(api.isDeepResearchLabel('Hĺbkový výskum'), true);
-  assert.equal(api.isDeepResearchLabel('Hloubkový výzkum'), true);
-  assert.equal(api.isDeepResearchLabel('Recherche approfondie'), true);
-  assert.equal(api.isDeepResearchLabel('Investigación profunda'), true);
-  assert.equal(api.isDeepResearchLabel('Gründliche Recherche'), true);
+test('recognizes exact Ukrainian labels captured from the live ChatGPT menu', () => {
+  assert.equal(api.isToolLabel('image', 'Створити зображення'), true);
+  assert.equal(api.isToolLabel('web', 'Пошук в Інтернеті'), true);
+  assert.equal(api.isToolLabel('research', 'Глибоке дослідження'), true);
 });
 
-test('does not accept generic research wording', () => {
-  assert.equal(api.isDeepResearchLabel('Research'), false);
-  assert.equal(api.isDeepResearchLabel('Search the web'), false);
-  assert.equal(api.isDeepResearchLabel('Add files and more'), false);
+test('recognizes live Ukrainian descriptions as fallbacks', () => {
+  assert.equal(api.isToolDescription('image', 'Візуалізуйте все'), true);
+  assert.equal(api.isToolDescription('web', 'Знаходьте актуальні новини й інформацію'), true);
+  assert.equal(api.isToolDescription('research', 'Отримати докладний звіт'), true);
 });
 
-test('menu item with exact label receives a strong score', () => {
-  const el = fakeElement({
-    text: 'Deep research',
-    tagName: 'BUTTON',
-    attrs: { role: 'menuitem', tabindex: '0' }
-  });
-  assert.ok(api.scoreDeepResearchCandidate(el) >= 135);
+test('recognizes English fallbacks for the three tools', () => {
+  assert.equal(api.isToolLabel('image', 'Create image'), true);
+  assert.equal(api.isToolLabel('web', 'Search the web'), true);
+  assert.equal(api.isToolLabel('research', 'Deep research'), true);
 });
 
-test('data-testid fallback works even when visible text changes', () => {
-  const el = fakeElement({
-    text: 'Advanced investigation',
-    tagName: 'BUTTON',
-    attrs: { 'data-testid': 'composer-deep-research-item', role: 'menuitem' }
-  });
-  assert.ok(api.scoreDeepResearchCandidate(el) >= 100);
+test('does not cross-match different tools', () => {
+  assert.equal(api.isToolLabel('image', 'Search the web'), false);
+  assert.equal(api.isToolLabel('web', 'Deep research'), false);
+  assert.equal(api.isToolLabel('research', 'Create image'), false);
 });
 
-test('internal connector id fallback works without readable label', () => {
+test('combined menu item text still matches the intended label', () => {
+  assert.equal(api.isToolLabel('image', 'Створити зображення Візуалізуйте все'), true);
+  assert.equal(api.isToolLabel('web', 'Пошук в Інтернеті Знаходьте актуальні новини й інформацію'), true);
+  assert.equal(api.isToolLabel('research', 'Глибоке дослідження Отримати докладний звіт'), true);
+});
+
+test('menu item roles increase confidence without being required', () => {
+  for (const [toolId, text] of [
+    ['image', 'Створити зображення Візуалізуйте все'],
+    ['web', 'Пошук в Інтернеті Знаходьте актуальні новини й інформацію'],
+    ['research', 'Глибоке дослідження Отримати докладний звіт']
+  ]) {
+    const el = fakeElement({ text, tagName: 'BUTTON', attrs: { role: 'menuitem', tabindex: '0' } });
+    assert.ok(api.scoreToolCandidate(toolId, el) >= 175, `${toolId} should score strongly`);
+  }
+});
+
+test('internal Deep Research connector id remains a fallback', () => {
   const el = fakeElement({
     text: '',
     tagName: 'BUTTON',
     attrs: { 'data-connector-id': 'connector_openai_deep_research', role: 'menuitem' }
   });
-  assert.ok(api.scoreDeepResearchCandidate(el) >= 140);
+  assert.ok(api.scoreToolCandidate('research', el) >= 130);
+});
+
+test('semantic signature fallbacks identify image and web search', () => {
+  const image = fakeElement({
+    text: '',
+    tagName: 'BUTTON',
+    attrs: { 'data-testid': 'composer-create-image', role: 'menuitem' }
+  });
+  const web = fakeElement({
+    text: '',
+    tagName: 'BUTTON',
+    attrs: { 'data-testid': 'search-the-web-tool', role: 'menuitem' }
+  });
+  assert.ok(api.scoreToolCandidate('image', image) >= 130);
+  assert.ok(api.scoreToolCandidate('web', web) >= 130);
 });
 
 test('selected state supports ARIA and data-state conventions', () => {
