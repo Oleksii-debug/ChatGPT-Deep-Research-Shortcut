@@ -6,7 +6,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '../src/content.js'), 'utf8');
 
 test('content script listens for Ctrl+Shift+U directly in the ChatGPT page', () => {
-  assert.match(source, /document\.addEventListener\('keydown'/);
+  assert.match(source, /document\.addEventListener\(\s*['"]keydown['"]/);
   assert.match(source, /isPickerShortcutEvent\(event\)/);
   assert.match(source, /requestOpenPicker\('page-keydown'\)/);
   assert.match(source, /stopImmediatePropagation/);
@@ -15,7 +15,7 @@ test('content script listens for Ctrl+Shift+U directly in the ChatGPT page', () 
 test('extension command and in-page shortcut converge on one deduplicated open path', () => {
   assert.match(source, /OPEN_DEDUPE_MS/);
   assert.match(source, /lastOpenRequestAt/);
-  assert.match(source, /requestOpenPicker\('extension-command'\)/);
+  assert.match(source, /requestOpenPicker\('chrome-command'\)/);
   assert.match(source, /document\.getElementById\(PICKER_ID\)/);
 });
 
