@@ -4,14 +4,14 @@
     /\bпоглиблене\s+дослідження\b/i,
     /\bглибоке\s+дослідження\b/i,
     /\bглубокое\s+исследование\b/i,
-    /\bhlbok(?:y|ý)\s+v(?:y|ý)skum\b/i,
-    /\bhloubkov(?:y|ý)\s+v(?:y|ý)zkum\b/i,
+    /\bhlbkovy\s+vyskum\b/i,
+    /\bhloubkovy\s+vyzkum\b/i,
     /\brecherche\s+approfondie\b/i,
-    /\binvestigaci[oó]n\s+profunda\b/i,
+    /\binvestigacion\s+profunda\b/i,
     /\bpesquisa\s+aprofundada\b/i,
     /\bpesquisa\s+profunda\b/i,
-    /\bgr[uü]ndliche\s+recherche\b/i,
-    /\bdog[lł][eę]bne\s+badanie\b/i
+    /\bgrundliche\s+recherche\b/i,
+    /\bdog[lł]ebne\s+badanie\b/i
   ];
 
   function normalizeText(value) {
