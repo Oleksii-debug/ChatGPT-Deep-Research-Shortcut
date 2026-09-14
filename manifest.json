@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ChatGPT Accessible Tool Picker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "NVDA-friendly keyboard picker for ChatGPT image generation, web search and Deep Research.",
   "permissions": ["activeTab"],
   "background": {
