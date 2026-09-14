@@ -22,10 +22,17 @@ test('keyboard contract includes Escape, arrows, Home, End and Tab', () => {
   }
 });
 
-test('buttons are native buttons and carry full accessible labels', () => {
+test('tool choices are native buttons and carry full accessible labels', () => {
   assert.match(source, /document\.createElement\('button'\)/);
   assert.match(source, /button\.type = 'button'/);
   assert.match(source, /button\.setAttribute\('aria-label', `\$\{tool\.label\}\. \$\{tool\.description\}`\)/);
+});
+
+test('diagnostics control is separately named and keyboard reachable', () => {
+  assert.match(source, /diagnostics\.type = 'button'/);
+  assert.match(source, /diagnostics\.dataset\.chatgptDiagnosticsDownload = 'true'/);
+  assert.match(source, /Завантажити діагностичний звіт/);
+  assert.match(source, /getPickerFocusables\(dialog\)/);
 });
 
 test('focus is moved into picker and restored on close', () => {
