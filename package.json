@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-accessible-tool-picker",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Tests and packaging metadata for the NVDA-friendly ChatGPT Accessible Tool Picker Chrome extension.",
   "scripts": {
