@@ -16,7 +16,7 @@ concurrency:
 jobs:
   release-gate:
     name: Sequential Node 20/22/24 release gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
