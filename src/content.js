@@ -1,11 +1,15 @@
 (() => {
-  const api = globalThis.ChatGPTDR;
+  const api = globalThis.ChatGPTToolPicker;
   if (!api) {
-    console.error("[ChatGPT Deep Research Shortcut] Matcher module did not load.");
+    console.error('[ChatGPT Tool Picker] Matcher module did not load.');
     return;
   }
 
-  const LOG_PREFIX = "[ChatGPT Deep Research Shortcut]";
+  const LOG_PREFIX = '[ChatGPT Tool Picker]';
+  const PICKER_ID = 'chatgpt-tool-picker-dialog';
+  const STATUS_ID = 'chatgpt-tool-picker-status';
+  const TOOL_ORDER = ['image', 'web', 'research'];
+
   const PLUS_SELECTORS = [
     '[data-testid="composer-plus-btn"]',
     '#composer-plus-btn',
@@ -13,6 +17,7 @@
     'button[aria-haspopup="menu"][aria-label*="файл" i]',
     'button[aria-haspopup="menu"][aria-label*="files" i]'
   ];
+
   const INTERACTIVE_SELECTOR = [
     '[role="menuitem"]',
     '[role="menuitemradio"]',
@@ -20,23 +25,17 @@
     '[role="option"]',
     'button',
     'a[href]',
-    '[tabindex="0"]',
-    '[data-testid*="research" i]',
-    '[data-testid*="deep" i]',
-    '[aria-label*="research" i]',
-    '[data-app-id*="deep_research" i]',
-    '[data-connector-id*="deep_research" i]',
-    '[data-tool*="deep-research" i]',
-    '[data-value*="deep-research" i]'
+    '[tabindex]'
   ].join(',');
 
   let activationInProgress = false;
+  let focusBeforePicker = null;
 
   function announce(message, assertive = true) {
-    let region = document.getElementById('chatgpt-deep-research-shortcut-status');
+    let region = document.getElementById(STATUS_ID);
     if (!region) {
       region = document.createElement('div');
-      region.id = 'chatgpt-deep-research-shortcut-status';
+      region.id = STATUS_ID;
       region.setAttribute('role', 'status');
       region.setAttribute('aria-live', assertive ? 'assertive' : 'polite');
       region.setAttribute('aria-atomic', 'true');
@@ -77,72 +76,6 @@
     return null;
   }
 
-  function toInteractiveElement(element) {
-    if (!(element instanceof Element)) return null;
-    if (element.matches(INTERACTIVE_SELECTOR)) return element;
-    return element.closest(INTERACTIVE_SELECTOR);
-  }
-
-  function isInOpenPopup(element) {
-    if (!(element instanceof Element)) return false;
-    const popup = element.closest('[role="menu"], [role="listbox"], [popover], [data-state="open"]');
-    if (!(popup instanceof Element)) return false;
-    if (popup.hidden || popup.getAttribute('aria-hidden') === 'true') return false;
-    return isVisible(popup);
-  }
-
-  function findDeepResearchCandidate(baseline = null) {
-    const candidates = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
-
-    // Some implementations put the visible label in a child span while the
-    // click target is the parent. Inspect short text-bearing nodes as a fallback.
-    for (const element of document.querySelectorAll('span,div')) {
-      const text = api.normalizeText(element.textContent);
-      if (text.length > 0 && text.length < 120 && api.isDeepResearchLabel(text)) {
-        const interactive = toInteractiveElement(element);
-        if (interactive) candidates.add(interactive);
-      }
-    }
-
-    return [...candidates]
-      .filter(isVisible)
-      .filter((element) => !baseline || !baseline.has(element) || isInOpenPopup(element))
-      .map((element) => ({ element, score: api.scoreDeepResearchCandidate(element) }))
-      .filter(({ score }) => score >= 90)
-      .sort((a, b) => b.score - a.score)[0]?.element || null;
-  }
-
-  function waitForDeepResearchCandidate(baseline, timeoutMs = 4000) {
-    const immediate = findDeepResearchCandidate(baseline);
-    if (immediate) return Promise.resolve(immediate);
-
-    return new Promise((resolve) => {
-      let finished = false;
-      const finish = (value) => {
-        if (finished) return;
-        finished = true;
-        observer.disconnect();
-        window.clearInterval(pollId);
-        window.clearTimeout(timeoutId);
-        resolve(value);
-      };
-
-      const check = () => {
-        const candidate = findDeepResearchCandidate(baseline);
-        if (candidate) finish(candidate);
-      };
-
-      const observer = new MutationObserver(check);
-      observer.observe(document.body || document.documentElement, {
-        childList: true,
-        subtree: true
-      });
-
-      const pollId = window.setInterval(check, 100);
-      const timeoutId = window.setTimeout(() => finish(null), timeoutMs);
-    });
-  }
-
   function findComposer() {
     const selectors = [
       '#prompt-textarea',
@@ -150,7 +83,8 @@
       '[data-testid*="composer"][contenteditable="true"]',
       'textarea[placeholder]',
       '[contenteditable="true"][aria-label*="message" i]',
-      '[contenteditable="true"][aria-label*="повідом" i]'
+      '[contenteditable="true"][aria-label*="повідом" i]',
+      '[contenteditable="true"][aria-label*="ChatGPT" i]'
     ];
 
     for (const selector of selectors) {
@@ -165,15 +99,85 @@
     composer?.focus({ preventScroll: true });
   }
 
-  function closeToolsMenuIfNeeded(plusButton) {
-    if (plusButton?.getAttribute('aria-expanded') === 'true') {
-      plusButton.click();
-    }
+  function isInOpenPopup(element) {
+    if (!(element instanceof Element)) return false;
+    const popup = element.closest('[role="menu"], [role="listbox"], [popover], [data-state="open"]');
+    if (!(popup instanceof Element)) return false;
+    return isVisible(popup);
   }
 
-  async function activateDeepResearch() {
+  function toInteractiveElement(element) {
+    if (!(element instanceof Element)) return null;
+    if (element.matches(INTERACTIVE_SELECTOR)) return element;
+    return element.closest(INTERACTIVE_SELECTOR);
+  }
+
+  function findToolCandidate(toolId, baseline = null) {
+    const candidates = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
+
+    for (const element of document.querySelectorAll('span,div')) {
+      const text = String(element.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!text || text.length > 180) continue;
+      if (api.isToolLabel(toolId, text) || api.isToolDescription(toolId, text)) {
+        const interactive = toInteractiveElement(element);
+        if (interactive) candidates.add(interactive);
+      }
+    }
+
+    return [...candidates]
+      .filter(isVisible)
+      .filter((element) => !baseline || !baseline.has(element) || isInOpenPopup(element))
+      .map((element) => ({ element, score: api.scoreToolCandidate(toolId, element) }))
+      .filter(({ score }) => score >= 100)
+      .sort((a, b) => b.score - a.score)[0]?.element || null;
+  }
+
+  function waitForToolCandidate(toolId, baseline, timeoutMs = 4500) {
+    const immediate = findToolCandidate(toolId, baseline);
+    if (immediate) return Promise.resolve(immediate);
+
+    return new Promise((resolve) => {
+      let finished = false;
+      const finish = (value) => {
+        if (finished) return;
+        finished = true;
+        observer.disconnect();
+        window.clearInterval(pollId);
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      };
+
+      const check = () => {
+        const candidate = findToolCandidate(toolId, baseline);
+        if (candidate) finish(candidate);
+      };
+
+      const observer = new MutationObserver(check);
+      observer.observe(document.body || document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['role', 'data-state', 'aria-hidden', 'aria-expanded']
+      });
+
+      const pollId = window.setInterval(check, 100);
+      const timeoutId = window.setTimeout(() => finish(null), timeoutMs);
+    });
+  }
+
+  function dispatchRobustClick(element) {
+    if (!(element instanceof HTMLElement)) return;
+    element.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+    element.focus?.({ preventScroll: true });
+    element.click();
+  }
+
+  async function activateTool(toolId) {
+    const tool = api.getTool(toolId);
+    if (!tool) return;
+
     if (activationInProgress) {
-      announce('Активація поглибленого дослідження вже виконується.', false);
+      announce('Попередня команда ще виконується.', false);
       return;
     }
 
@@ -187,46 +191,218 @@
       }
 
       const baseline = new Set(document.querySelectorAll(INTERACTIVE_SELECTOR));
-      const wasOpen = plusButton.getAttribute('aria-expanded') === 'true';
-      if (!wasOpen) {
-        plusButton.click();
+      if (plusButton.getAttribute('aria-expanded') !== 'true') {
+        dispatchRobustClick(plusButton);
       }
 
-      const candidate = await waitForDeepResearchCandidate(baseline);
+      const candidate = await waitForToolCandidate(toolId, baseline);
       if (!candidate) {
-        announce('Меню відкрито, але пункт «Поглиблене дослідження» не знайдено. Можливо, ChatGPT змінив інтерфейс або функція недоступна в цьому чаті.');
-        console.warn(`${LOG_PREFIX} Deep Research menu item not found in the opened popup.`);
+        announce(`Меню відкрито, але пункт «${tool.label}» не знайдено. Інтерфейс ChatGPT міг змінитися.`);
+        console.warn(`${LOG_PREFIX} Tool not found in the opened popup:`, toolId);
         return;
       }
 
-      const label = api.accessibleText(candidate) || 'Поглиблене дослідження';
       if (api.isSelected(candidate)) {
-        closeToolsMenuIfNeeded(plusButton);
+        if (plusButton.getAttribute('aria-expanded') === 'true') dispatchRobustClick(plusButton);
         focusComposer();
-        announce(`${label} уже ввімкнено. Введіть запит і натисніть Enter.`);
+        announce(`${tool.label} уже ввімкнено. Введіть запит і натисніть Enter.`);
         return;
       }
 
-      candidate.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-      candidate.click();
-
-      await new Promise((resolve) => window.setTimeout(resolve, 180));
+      dispatchRobustClick(candidate);
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
       focusComposer();
-      announce(`Пункт ${label} вибрано. Введіть запит і натисніть Enter.`);
-      console.info(`${LOG_PREFIX} Activated candidate from tools popup:`, label);
+      announce(`${tool.label} вибрано. Введіть запит і натисніть Enter.`);
+      console.info(`${LOG_PREFIX} Activated:`, toolId, api.accessibleText(candidate));
     } catch (error) {
-      console.error(`${LOG_PREFIX} Activation failed.`, error);
-      announce('Не вдалося активувати поглиблене дослідження через помилку інтерфейсу ChatGPT.');
+      console.error(`${LOG_PREFIX} Activation failed for ${toolId}.`, error);
+      announce(`Не вдалося активувати «${tool.label}» через помилку інтерфейсу ChatGPT.`);
     } finally {
       activationInProgress = false;
     }
   }
 
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message?.type === 'ACTIVATE_DEEP_RESEARCH') {
-      void activateDeepResearch();
+  function getPickerButtons(dialog) {
+    return [...dialog.querySelectorAll('[data-chatgpt-tool-id]')];
+  }
+
+  function closePicker({ restoreFocus = true } = {}) {
+    const dialog = document.getElementById(PICKER_ID);
+    if (!dialog) return;
+    dialog.remove();
+
+    if (restoreFocus) {
+      const target = focusBeforePicker instanceof HTMLElement && document.contains(focusBeforePicker)
+        ? focusBeforePicker
+        : findComposer();
+      target?.focus({ preventScroll: true });
     }
+  }
+
+  function movePickerFocus(dialog, delta) {
+    const buttons = getPickerButtons(dialog);
+    if (!buttons.length) return;
+    const currentIndex = Math.max(0, buttons.indexOf(document.activeElement));
+    const nextIndex = (currentIndex + delta + buttons.length) % buttons.length;
+    buttons[nextIndex].focus();
+  }
+
+  function trapTab(dialog, event) {
+    const buttons = getPickerButtons(dialog);
+    if (!buttons.length) return;
+    const currentIndex = buttons.indexOf(document.activeElement);
+    if (event.shiftKey && currentIndex <= 0) {
+      event.preventDefault();
+      buttons[buttons.length - 1].focus();
+    } else if (!event.shiftKey && currentIndex === buttons.length - 1) {
+      event.preventDefault();
+      buttons[0].focus();
+    }
+  }
+
+  function createPicker() {
+    const existing = document.getElementById(PICKER_ID);
+    if (existing) return existing;
+
+    focusBeforePicker = document.activeElement instanceof HTMLElement ? document.activeElement : findComposer();
+
+    const dialog = document.createElement('div');
+    dialog.id = PICKER_ID;
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', `${PICKER_ID}-title`);
+    dialog.setAttribute('aria-describedby', `${PICKER_ID}-description`);
+    Object.assign(dialog.style, {
+      position: 'fixed',
+      inset: '0',
+      zIndex: '2147483647',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'rgba(0, 0, 0, 0.55)',
+      padding: '24px'
+    });
+
+    const panel = document.createElement('div');
+    Object.assign(panel.style, {
+      width: 'min(560px, 100%)',
+      maxHeight: '90vh',
+      overflow: 'auto',
+      background: 'Canvas',
+      color: 'CanvasText',
+      border: '2px solid ButtonText',
+      borderRadius: '12px',
+      padding: '20px',
+      boxShadow: '0 12px 40px rgba(0,0,0,.35)'
+    });
+
+    const title = document.createElement('h2');
+    title.id = `${PICKER_ID}-title`;
+    title.textContent = 'Оберіть інструмент ChatGPT';
+    title.style.margin = '0 0 8px';
+
+    const description = document.createElement('p');
+    description.id = `${PICKER_ID}-description`;
+    description.textContent = 'Стрілки вгору і вниз або Tab — вибір. Enter — запустити. Escape — закрити.';
+    description.style.margin = '0 0 16px';
+
+    const list = document.createElement('div');
+    list.setAttribute('role', 'group');
+    list.setAttribute('aria-label', 'Доступні інструменти');
+    Object.assign(list.style, { display: 'grid', gap: '10px' });
+
+    for (const toolId of TOOL_ORDER) {
+      const tool = api.getTool(toolId);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.chatgptToolId = toolId;
+      button.setAttribute('aria-label', `${tool.label}. ${tool.description}`);
+      Object.assign(button.style, {
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        padding: '14px 16px',
+        border: '1px solid ButtonText',
+        borderRadius: '8px',
+        background: 'ButtonFace',
+        color: 'ButtonText',
+        font: 'inherit',
+        cursor: 'pointer'
+      });
+
+      const label = document.createElement('strong');
+      label.textContent = tool.label;
+      label.style.display = 'block';
+
+      const detail = document.createElement('span');
+      detail.textContent = tool.description;
+      detail.style.display = 'block';
+      detail.style.marginTop = '4px';
+
+      button.append(label, detail);
+      button.addEventListener('click', () => {
+        closePicker({ restoreFocus: false });
+        void activateTool(toolId);
+      });
+      list.appendChild(button);
+    }
+
+    panel.append(title, description, list);
+    dialog.appendChild(panel);
+
+    dialog.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closePicker();
+        announce('Вибір інструмента закрито.', false);
+        return;
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        movePickerFocus(dialog, 1);
+        return;
+      }
+      if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        movePickerFocus(dialog, -1);
+        return;
+      }
+      if (event.key === 'Home') {
+        event.preventDefault();
+        getPickerButtons(dialog)[0]?.focus();
+        return;
+      }
+      if (event.key === 'End') {
+        event.preventDefault();
+        const buttons = getPickerButtons(dialog);
+        buttons[buttons.length - 1]?.focus();
+        return;
+      }
+      if (event.key === 'Tab') trapTab(dialog, event);
+    });
+
+    dialog.addEventListener('mousedown', (event) => {
+      if (event.target === dialog) closePicker();
+    });
+
+    document.body.appendChild(dialog);
+    return dialog;
+  }
+
+  function openPicker() {
+    const dialog = createPicker();
+    const firstButton = getPickerButtons(dialog)[0];
+    window.setTimeout(() => firstButton?.focus({ preventScroll: true }), 0);
+    announce('Оберіть інструмент ChatGPT: Створити зображення, Пошук в Інтернеті або Глибоке дослідження.', false);
+  }
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message?.type === 'OPEN_TOOL_PICKER') openPicker();
   });
 
-  globalThis.ChatGPTDeepResearchShortcut = Object.freeze({ activateDeepResearch });
+  globalThis.ChatGPTAccessibleToolPicker = Object.freeze({
+    openPicker,
+    closePicker,
+    activateTool
+  });
 })();
