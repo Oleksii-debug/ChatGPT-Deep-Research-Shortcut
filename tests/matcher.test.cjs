@@ -60,6 +60,15 @@ test('data-testid fallback works even when visible text changes', () => {
   assert.ok(api.scoreDeepResearchCandidate(el) >= 100);
 });
 
+test('internal connector id fallback works without readable label', () => {
+  const el = fakeElement({
+    text: '',
+    tagName: 'BUTTON',
+    attrs: { 'data-connector-id': 'connector_openai_deep_research', role: 'menuitem' }
+  });
+  assert.ok(api.scoreDeepResearchCandidate(el) >= 140);
+});
+
 test('selected state supports ARIA and data-state conventions', () => {
   assert.equal(api.isSelected(fakeElement({ attrs: { 'aria-checked': 'true' } })), true);
   assert.equal(api.isSelected(fakeElement({ attrs: { 'aria-pressed': 'true' } })), true);
