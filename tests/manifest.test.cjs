@@ -15,14 +15,18 @@ test('Ctrl+Shift+U opens the tool picker command on Windows', () => {
   assert.equal(command.suggested_key?.default, 'Ctrl+Shift+U');
 });
 
-test('extension version is the hardened direct-chat picker release', () => {
-  assert.equal(manifest.version, '0.3.0');
+test('extension version is the verified activation and diagnostics release', () => {
+  assert.equal(manifest.version, '0.4.0');
   assert.match(manifest.name, /Tool Picker/i);
+  assert.match(manifest.description, /verified/i);
+  assert.match(manifest.description, /diagnostics/i);
 });
 
 test('runtime permissions stay minimal', () => {
   assert.deepEqual(manifest.permissions, ['activeTab']);
   assert.equal(manifest.host_permissions, undefined);
+  assert.equal(manifest.permissions.includes('downloads'), false);
+  assert.equal(manifest.permissions.includes('storage'), false);
 });
 
 test('content script dependency order is deterministic', () => {
